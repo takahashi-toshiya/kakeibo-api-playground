@@ -1,0 +1,47 @@
+---
+description: システム全体のアーキテクチャとレイヤー構成
+globs:
+  - 'app/**/*.ts'
+alwaysApply: false
+---
+
+# アーキテクチャ
+
+## レイヤー構造
+
+このプロジェクトは以下のレイヤー構造を採用：
+
+```
+Controller → Service → Repository → Model → Database
+    ↓          ↓           ↓          ↓
+  HTTP層   ビジネス層    データ層    ORM層
+```
+
+## データフロー
+
+```
+Client
+  ↓ HTTP Request
+Middleware（前処理）
+  ↓
+Router
+  ↓
+Controller（バリデーション）
+  ↓
+Service（ビジネスロジック）
+  ↓
+Repository（データアクセス）
+  ↓
+Model（ORM）
+  ↓
+Database
+```
+
+## レイヤー間の依存関係
+
+**重要な原則:**
+
+- **単方向の依存** - 上位層は下位層に依存できるが、逆は不可
+- **抽象化** - 各層は下位層の実装詳細を知らない
+- **疎結合** - 層間はインターフェースを通じて通信
+- **テスタビリティ** - 各層を独立してテスト可能

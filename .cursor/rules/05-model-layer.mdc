@@ -1,0 +1,154 @@
+---
+description: Model層の実装ルールと規約
+globs:
+  - 'app/models/**/*.ts'
+alwaysApply: false
+---
+
+# Model層の規約
+
+## 役割
+
+**データ構造の定義**
+
+- テーブル構造の定義
+- リレーションシップの定義
+- 型情報の提供
+
+## 原則：データ構造のみ
+
+モデルはデータ構造の定義に専念し、複雑なビジネスロジックは持たない。
+
+## 実装パターン
+
+```typescript
+import { DateTime } from 'luxon'
+import { BaseModel, column, belongsTo, hasMany } from '@adonisjs/lucid/orm'
+import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
+import User from '#models/User'
+import Tag from '#models/Tag'
+
+export default class Note extends BaseModel {
+  /**
+   * 主キー
+   */
+  @column({ isPrimary: true })
+  declare id: number
+
+  /**
+   * ユーザーID
+   */
+  @column()
+  declare userId: number
+
+  /**
+   * タイトル
+   */
+  @column()
+  declare title: string
+
+  /**
+   * 内容
+   */
+  @column()
+  declare content: string
+
+  /**
+   * 作成日時
+   */
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+
+  /**
+   * 更新日時
+   */
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+
+  /**
+   * リレーション: User
+   */
+  @belongsTo(() => User)
+  declare user: BelongsTo<typeof User>
+
+  /**
+   * リレーション: Tags
+   */
+  @hasMany(() => Tag)
+  declare tags: HasMany<typeof Tag>
+}
+```
+
+## 命名規則
+
+- クラス名: PascalCase、単数形 (例: `Note`, `User`, `Transaction`)
+- ファイル名: snake_case、単数形 (例: `note.ts`, `user.ts`)
+- カラム名: camelCase (例: `userId`, `createdAt`)
+
+## リレーションシップ
+
+### belongsTo (多対1)
+
+```typescript
+@belongsTo(() => User)
+declare user: BelongsTo<typeof User>
+```
+
+### hasMany (1対多)
+
+```typescript
+@hasMany(() => Post)
+declare posts: HasMany<typeof Post>
+```
+
+### manyToMany (多対多)
+
+```typescript
+@manyToMany(() => Tag, {
+  pivotTable: 'note_tags'
+})
+declare tags: ManyToMany<typeof Tag>
+```
+
+## カラムの型定義
+
+```typescript
+// 基本型
+@column()
+declare title: string
+
+@column()
+declare age: number
+
+@column()
+declare isActive: boolean
+
+// 日時
+@column.dateTime({ autoCreate: true })
+declare createdAt: DateTime
+
+// JSON
+@column({
+  prepare: (value: any) => JSON.stringify(value),
+  consume: (value: string) => JSON.parse(value),
+})
+declare metadata: Record<string, any>
+```
+
+## テーブル名のカスタマイズ
+
+```typescript
+export default class Note extends BaseModel {
+  static table = 'notes'
+}
+```
+
+## コメント
+
+全てのカラムとリレーションに日本語コメントで説明を追加。
+
+## 禁止事項
+
+❌ **モデルでビジネスロジックを書かない**
+
+モデルは純粋にデータ構造の定義のみ。複雑なロジックはサービス層に。

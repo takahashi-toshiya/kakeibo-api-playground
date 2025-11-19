@@ -1,0 +1,40 @@
+---
+description: プロジェクト全体の概要と基本方針
+globs:
+  - 'app/**/*.ts'
+alwaysApply: false
+---
+
+# Kakeibo API Playground - プロジェクト概要
+
+## プロジェクトの目的
+
+Node.js + TypeScript + AdonisJS を使ったバックエンド開発の学習用プロジェクト。
+家計簿アプリのREST APIを構築する。
+
+## 技術スタック
+
+- **フレームワーク**: AdonisJS v6
+- **言語**: TypeScript
+- **データベース**: PostgreSQL
+- **ORM**: Lucid (AdonisJSの公式ORM)
+- **認証**: @adonisjs/auth
+- **バリデーション**: VineJS
+
+## プロジェクト構造
+
+```
+app/
+  ├── controllers/     # HTTPリクエストハンドラー
+  ├── services/        # ビジネスロジック
+  ├── repositories/    # データアクセス
+  ├── models/          # データモデル
+  ├── middleware/      # ミドルウェア
+  └── validators/      # バリデーションスキーマ
+```
+
+## 基本方針
+
+- これは学習用プロジェクトなので、シンプルさを優先
+- コードは理解しやすさを重視
+- 関数とメソッドは日本語コメントで説明を追加

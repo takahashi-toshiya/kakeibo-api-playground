@@ -1,0 +1,146 @@
+---
+description: Repository層の実装ルールと規約
+globs:
+  - 'app/repositories/**/*.ts'
+alwaysApply: false
+---
+
+# Repository層の規約
+
+## 役割
+
+**データアクセスの抽象化**
+
+- データベースクエリの実装
+- モデルを使ったCRUD操作
+- 複雑なクエリロジックのカプセル化
+
+## 原則：データソースを隠蔽
+
+リポジトリはデータがどこから来るか（DB、キャッシュ、外部API等）を隠蔽し、サービス層はデータソースを意識しない。
+
+## 実装パターン
+
+```typescript
+import Note from '#models/Note'
+import type { TransactionClientContract } from '@adonisjs/lucid/types/database'
+
+export default class NoteRepository {
+  /**
+   * 全てのメモを取得
+   */
+  async findAll(): Promise<Note[]> {
+    return await Note.query().orderBy('created_at', 'desc')
+  }
+
+  /**
+   * IDでメモを取得
+   */
+  async findById(id: number): Promise<Note | null> {
+    return await Note.find(id)
+  }
+
+  /**
+   * ユーザーIDでメモを取得
+   */
+  async findByUserId(userId: number): Promise<Note[]> {
+    return await Note.query().where('user_id', userId).orderBy('created_at', 'desc')
+  }
+
+  /**
+   * メモを作成
+   */
+  async create(
+    data: { title: string; content: string },
+    trx?: TransactionClientContract
+  ): Promise<Note> {
+    return await Note.create(data, { client: trx })
+  }
+
+  /**
+   * メモを更新
+   */
+  async update(id: number, data: Partial<{ title: string; content: string }>): Promise<Note> {
+    const note = await Note.findOrFail(id)
+    note.merge(data)
+    await note.save()
+    return note
+  }
+
+  /**
+   * メモを削除
+   */
+  async delete(id: number): Promise<void> {
+    const note = await Note.findOrFail(id)
+    await note.delete()
+  }
+
+  /**
+   * 検索
+   */
+  async search(keyword: string): Promise<Note[]> {
+    return await Note.query()
+      .where('title', 'like', `%${keyword}%`)
+      .orWhere('content', 'like', `%${keyword}%`)
+      .orderBy('created_at', 'desc')
+  }
+
+  /**
+   * ページネーション付き取得
+   */
+  async paginate(page: number, perPage: number = 20) {
+    return await Note.query().orderBy('created_at', 'desc').paginate(page, perPage)
+  }
+}
+```
+
+## 命名規則
+
+- クラス名: `{リソース名}Repository` (例: `NoteRepository`, `UserRepository`)
+- ファイル名: `{リソース名}Repository.ts` (例: `NoteRepository.ts`, `UserRepository.ts`)
+- メソッド名: データ操作を表す動詞 (例: `find`, `create`, `update`, `delete`)
+
+## メソッド命名パターン
+
+| パターン           | 用途             | 例                            |
+| ------------------ | ---------------- | ----------------------------- |
+| `findAll()`        | 全件取得         | `findAll()`                   |
+| `findById(id)`     | ID検索           | `findById(1)`                 |
+| `findBy{条件}()`   | 条件検索         | `findByUserId(userId)`        |
+| `create(data)`     | 作成             | `create({ title: 'xxx' })`    |
+| `update(id, data)` | 更新             | `update(1, { title: 'xxx' })` |
+| `delete(id)`       | 削除             | `delete(1)`                   |
+| `search()`         | 検索             | `search('keyword')`           |
+| `paginate()`       | ページネーション | `paginate(1, 20)`             |
+
+## トランザクション対応
+
+トランザクションを受け取れるようにする：
+
+```typescript
+async create(data: any, trx?: TransactionClientContract): Promise<Note> {
+  return await Note.create(data, { client: trx })
+}
+```
+
+## クエリの最適化
+
+### N+1問題の回避
+
+```typescript
+async findAllWithUser(): Promise<Note[]> {
+  return await Note.query().preload('user')
+}
+```
+
+### 必要なカラムのみ取得
+
+```typescript
+async findAllTitles(): Promise<Pick<Note, 'id' | 'title'>[]> {
+  return await Note.query().select('id', 'title')
+}
+```
+
+## コメント
+
+全てのメソッドに日本語コメントで説明を追加。

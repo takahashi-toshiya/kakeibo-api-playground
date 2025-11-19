@@ -1,0 +1,232 @@
+---
+description: 開発時のコマンドとベストプラクティス
+globs:
+  - '**/*.ts'
+alwaysApply: false
+---
+
+# 開発ガイド
+
+## 開発コマンド
+
+```bash
+# 開発サーバー起動（HMR有効）
+npm run dev
+
+# ビルド
+npm run build
+
+# 本番環境起動
+npm start
+
+# テスト実行
+npm test
+
+# Lintチェック
+npm run lint
+
+# 型チェック
+npm run typecheck
+```
+
+## AdonisJS CLIコマンド
+
+```bash
+# コントローラー作成
+node ace make:controller ResourceName
+
+# モデル作成（マイグレーションも同時生成）
+node ace make:model ResourceName -m
+
+# サービス作成（手動で作成が必要）
+# app/services/ResourceNameService.ts
+
+# リポジトリ作成（手動で作成が必要）
+# app/repositories/ResourceNameRepository.ts
+
+# ミドルウェア作成
+node ace make:middleware MiddlewareName
+
+# マイグレーション作成
+node ace make:migration create_table_name
+
+# バリデーター作成
+node ace make:validator ResourceName
+
+# マイグレーション実行
+node ace migration:run
+
+# マイグレーションロールバック
+node ace migration:rollback
+```
+
+## デバッグ
+
+### ログ出力
+
+```typescript
+import logger from '@adonisjs/core/services/logger'
+
+logger.info('情報メッセージ')
+logger.error('エラーメッセージ')
+logger.debug('デバッグメッセージ')
+logger.warn('警告メッセージ')
+```
+
+### データベースクエリのログ
+
+`.env` で設定:
+
+```
+DB_DEBUG=true
+```
+
+## トランザクション
+
+複数のデータベース操作を含む場合は必ずトランザクションを使用：
+
+```typescript
+import db from '@adonisjs/lucid/services/db'
+
+const trx = await db.transaction()
+
+try {
+  await User.create(userData, { client: trx })
+  await Profile.create(profileData, { client: trx })
+  await trx.commit()
+} catch (error) {
+  await trx.rollback()
+  throw error
+}
+```
+
+## バリデーション
+
+全てのリクエストで必ずバリデーションを実施：
+
+```typescript
+import vine from '@vinejs/vine'
+
+const createNoteValidator = vine.compile(
+  vine.object({
+    title: vine.string().trim().minLength(3).maxLength(255),
+    content: vine.string().trim().minLength(1),
+  })
+)
+
+// コントローラーで使用
+const data = await request.validateUsing(createNoteValidator)
+```
+
+## エラーハンドリング
+
+適切なHTTPステータスコードとエラーメッセージを返す：
+
+```typescript
+try {
+  const note = await noteService.findById(id)
+  return response.ok({ success: true, data: note })
+} catch (error) {
+  if (error.message === 'メモが見つかりません') {
+    return response.notFound({
+      success: false,
+      message: error.message,
+    })
+  }
+
+  logger.error(error)
+  return response.internalServerError({
+    success: false,
+    message: 'サーバーエラーが発生しました',
+  })
+}
+```
+
+## テスト
+
+```bash
+# 全テスト実行
+npm test
+
+# 特定のテストスイート
+node ace test functional
+node ace test unit
+
+# ウォッチモード
+node ace test --watch
+```
+
+## 開発フロー
+
+### 新しいAPIエンドポイントを追加
+
+1. **マイグレーションとモデルを作成**
+
+   ```bash
+   node ace make:model Note -m
+   ```
+
+2. **マイグレーションでスキーマ定義**
+
+   ```typescript
+   // database/migrations/xxx_create_notes_table.ts
+   table.increments('id')
+   table.string('title')
+   table.text('content')
+   table.timestamps(true)
+   ```
+
+3. **マイグレーション実行**
+
+   ```bash
+   node ace migration:run
+   ```
+
+4. **リポジトリを作成**
+
+   ```typescript
+   // app/repositories/NoteRepository.ts
+   export default class NoteRepository {
+     async findAll() { ... }
+     async create(data) { ... }
+   }
+   ```
+
+5. **サービスを作成**
+
+   ```typescript
+   // app/services/NoteService.ts
+   export default class NoteService {
+     async create(data) { ... }
+   }
+   ```
+
+6. **コントローラーを作成**
+
+   ```bash
+   node ace make:controller Note
+   ```
+
+7. **バリデーターを作成**
+
+   ```typescript
+   // app/validators/note.ts
+   export const createNoteValidator = vine.compile(...)
+   ```
+
+8. **ルートを定義**
+   ```typescript
+   // start/routes.ts
+   const NotesController = () => import('#controllers/NotesController')
+   router.resource('notes', NotesController).apiOnly()
+   ```
+
+## ベストプラクティス
+
+- コントローラーは薄く保つ（HTTP処理のみ）
+- ビジネスロジックはサービス層に
+- データアクセスはリポジトリ層に
+- 全てのメソッドに日本語コメントを追加
+- バリデーションは必須
+- トランザクションを適切に使用
+- 適切なHTTPステータスコードを返す

@@ -1,0 +1,146 @@
+---
+description: Service層の実装ルールと規約
+globs:
+  - 'app/services/**/*.ts'
+alwaysApply: false
+---
+
+# Service層の規約
+
+## 役割
+
+**ビジネスロジックの実装**
+
+- アプリケーション固有のビジネスルール
+- トランザクション管理
+- 複数のリポジトリを組み合わせた処理
+- 外部サービスとの連携
+
+## 原則：再利用可能に
+
+サービスは特定のコントローラーに依存せず、複数の場所から呼び出せるように設計。
+
+## 実装パターン
+
+```typescript
+import Note from '#models/Note'
+import NoteRepository from '#repositories/NoteRepository'
+import db from '@adonisjs/lucid/services/db'
+
+export default class NoteService {
+  private noteRepository: NoteRepository
+
+  constructor() {
+    this.noteRepository = new NoteRepository()
+  }
+
+  /**
+   * 全てのメモを取得
+   */
+  async findAll(): Promise<Note[]> {
+    return await this.noteRepository.findAll()
+  }
+
+  /**
+   * IDでメモを取得
+   */
+  async findById(id: number): Promise<Note | null> {
+    return await this.noteRepository.findById(id)
+  }
+
+  /**
+   * メモを作成
+   */
+  async create(data: { title: string; content: string }): Promise<Note> {
+    // トランザクション開始
+    const trx = await db.transaction()
+
+    try {
+      // ビジネスロジック
+      const note = await this.noteRepository.create(data, trx)
+
+      // 追加処理（ログ記録など）
+      await this.logAction('note_created', note.id, trx)
+
+      await trx.commit()
+      return note
+    } catch (error) {
+      await trx.rollback()
+      throw error
+    }
+  }
+
+  /**
+   * メモを更新
+   */
+  async update(id: number, data: Partial<{ title: string; content: string }>): Promise<Note> {
+    const note = await this.noteRepository.findById(id)
+
+    if (!note) {
+      throw new Error('メモが見つかりません')
+    }
+
+    return await this.noteRepository.update(id, data)
+  }
+
+  /**
+   * メモを削除
+   */
+  async delete(id: number): Promise<void> {
+    const note = await this.noteRepository.findById(id)
+
+    if (!note) {
+      throw new Error('メモが見つかりません')
+    }
+
+    await this.noteRepository.delete(id)
+  }
+
+  /**
+   * アクションをログに記録（内部メソッド）
+   */
+  private async logAction(action: string, noteId: number, trx?: any): Promise<void> {
+    // ログ記録のロジック
+  }
+}
+```
+
+## 命名規則
+
+- クラス名: `{リソース名}Service` (例: `NoteService`, `UserService`)
+- ファイル名: `{リソース名}Service.ts` (例: `NoteService.ts`, `UserService.ts`)
+- メソッド名: ビジネスアクションを表す動詞 (例: `create`, `findAll`, `updateStatus`)
+
+## トランザクション管理
+
+複数のデータベース操作を含む場合は、サービス層でトランザクションを管理：
+
+```typescript
+async create(data: any): Promise<Note> {
+  const trx = await db.transaction()
+
+  try {
+    const note = await this.noteRepository.create(data, trx)
+    await this.someOtherRepository.create(relatedData, trx)
+    await trx.commit()
+    return note
+  } catch (error) {
+    await trx.rollback()
+    throw error
+  }
+}
+```
+
+## エラーハンドリング
+
+適切なエラーを投げる：
+
+```typescript
+if (!note) {
+  throw new Error('メモが見つかりません')
+}
+```
+
+## コメント
+
+全てのpublicメソッドに日本語コメントで説明を追加。
