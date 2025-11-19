@@ -1,0 +1,20 @@
+# Kakeibo API Playground
+
+Node.js + TypeScript + AdonisJS を使ったバックエンド開発の学習用プロジェクト。
+詳細なルールは `.cursor/rules/` ディレクトリを参照。
+
+## 重要な原則
+
+- **レイヤー構造**: Controller → Service → Repository → Model
+- **レスポンス形式**: `{ success: true/false, message?: string, data?: any }`
+- **コメント**: 全ての関数とメソッドに日本語コメントを追加
+- **シンプルさ優先**: 学習用プロジェクトなので理解しやすさを重視
+
+## インポートパス
+
+```typescript
+import Controller from '#controllers/XxxController'
+import Service from '#services/XxxService'
+import Repository from '#repositories/XxxRepository'
+import Model from '#models/Xxx'
+```

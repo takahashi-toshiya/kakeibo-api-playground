@@ -1,0 +1,275 @@
+---
+description: プロジェクト全体の命名規則
+globs:
+  - 'app/**/*.ts'
+  - 'database/**/*.ts'
+alwaysApply: false
+---
+
+# 命名規則
+
+## ファイル命名
+
+### TypeScriptファイル
+
+| 種類       | 命名規則                          | 例                                 |
+| ---------- | --------------------------------- | ---------------------------------- |
+| Controller | `{リソース名}Controller.ts`       | `NotesController.ts`               |
+| Service    | `{リソース名}Service.ts`          | `NoteService.ts`                   |
+| Repository | `{リソース名}Repository.ts`       | `NoteRepository.ts`                |
+| Model      | `{リソース名}.ts` (単数形)        | `Note.ts`, `User.ts`               |
+| Middleware | `{機能名}Middleware.ts`           | `AuthMiddleware.ts`                |
+| Validator  | `{リソース名}Validator.ts`        | `NoteValidator.ts`                 |
+| Migration  | `{timestamp}_{action}_{table}.ts` | `1234567890_create_notes_table.ts` |
+
+**ルール:**
+
+- **PascalCase を使用**（クラス名と完全一致）
+- 単数形を使用（Modelとリソース名）
+- 複数形はテーブル名のみ
+- マイグレーションのみ snake_case（Lucidの規約）
+
+## クラス命名
+
+### PascalCase（各単語の頭文字を大文字）
+
+```typescript
+// Controller
+export default class NotesController {}
+export default class UserNotesController {}
+
+// Service
+export default class NoteService {}
+export default class UserAuthService {}
+
+// Repository
+export default class NoteRepository {}
+export default class UserRepository {}
+
+// Model
+export default class Note extends BaseModel {}
+export default class User extends BaseModel {}
+
+// Middleware
+export default class AuthMiddleware {}
+```
+
+**パターン:**
+
+- Controller: `{リソース名}Controller`
+- Service: `{リソース名}Service`
+- Repository: `{リソース名}Repository`
+- Model: `{リソース名}` (単数形)
+- Middleware: `{機能名}Middleware`
+
+## メソッド命名
+
+### camelCase（最初は小文字、以降の単語の頭文字を大文字）
+
+```typescript
+// Controller - RESTful命名
+class NotesController {
+  async index() {} // 一覧取得
+  async store() {} // 新規作成
+  async show() {} // 単一取得
+  async update() {} // 更新
+  async destroy() {} // 削除
+}
+
+// Service - ビジネスアクション
+class NoteService {
+  async findAll() {}
+  async findById() {}
+  async create() {}
+  async update() {}
+  async delete() {}
+  async archive() {}
+  async restore() {}
+}
+
+// Repository - データ操作
+class NoteRepository {
+  async findAll() {}
+  async findById() {}
+  async findByUserId() {}
+  async create() {}
+  async update() {}
+  async delete() {}
+  async search() {}
+  async paginate() {}
+}
+```
+
+**パターン:**
+
+- Controller: `index`, `store`, `show`, `update`, `destroy` (RESTful)
+- Service: `{動詞}{名詞}` (例: `createNote`, `findAll`)
+- Repository: `find{条件}`, `create`, `update`, `delete`
+- Boolean返却: `is{形容詞}`, `has{名詞}`, `can{動詞}`
+
+## 変数命名
+
+### camelCase
+
+```typescript
+// 基本
+const userId = 1
+const noteTitle = 'タイトル'
+const createdAt = new Date()
+
+// Boolean
+const isActive = true
+const hasPermission = false
+const canEdit = true
+
+// 配列（複数形）
+const notes = await Note.all()
+const users = await User.all()
+const ids = [1, 2, 3]
+
+// オブジェクト
+const noteData = { title: 'xxx', content: 'yyy' }
+const userInfo = { name: 'xxx', email: 'yyy' }
+
+// 定数（UPPER_SNAKE_CASE）
+const MAX_UPLOAD_SIZE = 1024 * 1024
+const DEFAULT_PAGE_SIZE = 20
+```
+
+**ルール:**
+
+- 単数/複数を明確に
+- Boolean は `is`, `has`, `can` で始める
+- 定数は `UPPER_SNAKE_CASE`
+- 略語は避ける（`usr` → `user`）
+
+## データベース関連
+
+### テーブル名: snake_case + 複数形
+
+```typescript
+// Model定義
+export default class Note extends BaseModel {
+  static table = 'notes'  // 複数形
+}
+
+export default class User extends BaseModel {
+  static table = 'users'
+}
+
+// 中間テーブル: アルファベット順
+static table = 'note_tags'  // not 'tag_notes'
+```
+
+### カラム名: snake_case
+
+```typescript
+// マイグレーション
+table.increments('id')
+table.integer('user_id').unsigned()
+table.string('note_title')
+table.text('note_content')
+table.timestamp('created_at')
+table.timestamp('updated_at')
+```
+
+### Model プロパティ: camelCase
+
+```typescript
+export default class Note extends BaseModel {
+  @column({ isPrimary: true })
+  declare id: number
+
+  @column()
+  declare userId: number // DBは user_id
+
+  @column()
+  declare noteTitle: string // DBは note_title
+
+  @column.dateTime()
+  declare createdAt: DateTime // DBは created_at
+}
+```
+
+**Lucid が自動変換:**
+
+- `userId` ↔ `user_id`
+- `createdAt` ↔ `created_at`
+
+## インポートパス
+
+### エイリアス使用（package.jsonで定義済み）
+
+```typescript
+// Good - エイリアス使用（PascalCase）
+import NotesController from '#controllers/NotesController'
+import NoteService from '#services/NoteService'
+import NoteRepository from '#repositories/NoteRepository'
+import Note from '#models/Note'
+
+// Bad - 相対パス
+import NotesController from '../../../controllers/NotesController'
+```
+
+**利用可能なエイリアス:**
+
+- `#controllers/*` (例: `#controllers/NotesController`)
+- `#services/*` (例: `#services/NoteService`)
+- `#repositories/*` (例: `#repositories/NoteRepository`)
+- `#models/*` (例: `#models/Note`)
+- `#middleware/*` (例: `#middleware/AuthMiddleware`)
+- `#validators/*` (例: `#validators/NoteValidator`)
+- `#config/*`
+
+## 一般的なルール
+
+### 1. わかりやすさ優先
+
+```typescript
+// Good
+const authenticatedUser = await auth.user()
+const isEmailVerified = user.emailVerifiedAt !== null
+
+// Bad - 略語
+const authUsr = await auth.user()
+const isVer = user.emailVerifiedAt !== null
+```
+
+### 2. 一貫性を保つ
+
+```typescript
+// Good - 同じパターン
+async findAll()
+async findById()
+async findByUserId()
+
+// Bad - バラバラ
+async getAll()
+async findById()
+async searchByUser()
+```
+
+### 3. 単数/複数を明確に
+
+```typescript
+// Good
+const note = await Note.find(1) // 単数
+const notes = await Note.all() // 複数
+
+// Bad
+const note = await Note.all() // 混乱
+const notes = await Note.find(1) // 混乱
+```
+
+## チェックリスト
+
+コードレビュー時の確認項目：
+
+- [ ] ファイル名は規則に従っているか
+- [ ] クラス名はPascalCaseか
+- [ ] メソッド/変数名はcamelCaseか
+- [ ] Boolean変数は `is/has/can` で始まるか
+- [ ] 配列は複数形か
+- [ ] 定数は `UPPER_SNAKE_CASE` か
+- [ ] インポートパスはエイリアスを使っているか
+- [ ] テーブル名は複数形、カラム名はsnake_caseか

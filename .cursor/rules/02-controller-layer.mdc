@@ -1,0 +1,139 @@
+---
+description: Controller層の実装ルールと規約
+globs:
+  - 'app/controllers/**/*.ts'
+alwaysApply: false
+---
+
+# Controller層の規約
+
+## 役割
+
+**HTTPレイヤーの処理のみ**
+
+- リクエストの受け取りとレスポンスの返却
+- バリデーション（VineJS）
+- サービス層の呼び出し
+- HTTPステータスコードの決定
+
+## 原則：薄く保つ
+
+コントローラーはHTTPに関する処理のみを行い、ビジネスロジックは持たない。
+
+## 実装パターン
+
+```typescript
+import type { HttpContext } from '@adonisjs/core/http'
+
+export default class NotesController {
+  /**
+   * メモ一覧を取得
+   * GET /api/notes
+   */
+  async index({ response }: HttpContext) {
+    const notes = await noteService.findAll()
+    return response.ok({ success: true, data: notes })
+  }
+
+  /**
+   * メモを作成
+   * POST /api/notes
+   */
+  async store({ request, response }: HttpContext) {
+    // 1. バリデーション
+    const data = await request.validateUsing(createNoteValidator)
+
+    // 2. サービス層を呼び出し
+    const note = await noteService.create(data)
+
+    // 3. レスポンス生成
+    return response.created({ success: true, data: note })
+  }
+
+  /**
+   * メモを取得
+   * GET /api/notes/:id
+   */
+  async show({ params, response }: HttpContext) {
+    const note = await noteService.findById(params.id)
+
+    if (!note) {
+      return response.notFound({
+        success: false,
+        message: 'メモが見つかりません',
+      })
+    }
+
+    return response.ok({ success: true, data: note })
+  }
+
+  /**
+   * メモを更新
+   * PUT /api/notes/:id
+   */
+  async update({ params, request, response }: HttpContext) {
+    const data = await request.validateUsing(updateNoteValidator)
+    const note = await noteService.update(params.id, data)
+    return response.ok({ success: true, data: note })
+  }
+
+  /**
+   * メモを削除
+   * DELETE /api/notes/:id
+   */
+  async destroy({ params, response }: HttpContext) {
+    await noteService.delete(params.id)
+    return response.ok({ success: true, message: 'メモを削除しました' })
+  }
+}
+```
+
+## メソッド命名規則（RESTful）
+
+- `index`: 一覧取得
+- `store`: 新規作成
+- `show`: 単一取得
+- `update`: 更新
+- `destroy`: 削除
+
+## 禁止事項
+
+❌ **コントローラーでビジネスロジックを書かない**
+
+```typescript
+// Bad
+async store({ request, response }: HttpContext) {
+  const data = request.only(['title', 'content'])
+
+  // ビジネスロジックを直接書いている
+  if (data.title.length < 3) {
+    return response.badRequest({ message: 'タイトルが短すぎます' })
+  }
+
+  const note = await Note.create(data)
+  await Log.create({ action: 'note_created', note_id: note.id })
+
+  return response.created({ success: true, data: note })
+}
+
+// Good - サービス層に委譲
+async store({ request, response }: HttpContext) {
+  const data = await request.validateUsing(createNoteValidator)
+  const note = await noteService.create(data)
+  return response.created({ success: true, data: note })
+}
+```
+
+## コメント
+
+全てのメソッドに日本語コメントで説明を追加：
+
+```typescript
+/**
+ * メモを作成
+ * POST /api/notes
+ */
+async store({ request, response }: HttpContext) {
+  // ...
+}
+```
