@@ -141,6 +141,32 @@ if (!note) {
 }
 ```
 
+## 禁止事項（絶対に守ること）
+
+❌ **ServiceでModelを直接呼び出さない（Repository経由のみ）**
+```typescript
+// Bad - Modelを直接呼び出している
+import User from '#models/User'
+
+async findById(id: number): Promise<User | null> {
+  return await User.find(id) // ❌
+}
+
+// Good - Repository層を経由
+async findById(id: number): Promise<User | null> {
+  return await this.userRepository.findById(id) // ✅
+}
+```
+
+❌ **Repository層を飛ばさない**
+```typescript
+// Bad - Repository層を飛ばしている
+const user = await User.create(data) // ❌
+
+// Good - Repository層を経由
+const user = await this.userRepository.create(data) // ✅
+```
+
 ## コメント
 
 全てのpublicメソッドに日本語コメントで説明を追加。

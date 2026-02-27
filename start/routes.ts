@@ -14,3 +14,9 @@ router.get('/', async () => {
     hello: 'world',
   }
 })
+
+// Auth API
+const AuthController = () => import('#controllers/AuthController')
+router.group(() => {
+  router.post('/tokens', [AuthController, 'store'])
+}).prefix('/v1/auth')

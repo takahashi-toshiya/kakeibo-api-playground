@@ -2,14 +2,14 @@
 description: システム全体のアーキテクチャとレイヤー構成
 globs:
   - 'app/**/*.ts'
-alwaysApply: false
+alwaysApply: true
 ---
 
 # アーキテクチャ
 
-## レイヤー構造
+## レイヤー構造（必須）
 
-このプロジェクトは以下のレイヤー構造を採用：
+このプロジェクトは以下のレイヤー構造を**必ず**採用する：
 
 ```
 Controller → Service → Repository → Model → Database
@@ -17,7 +17,11 @@ Controller → Service → Repository → Model → Database
   HTTP層   ビジネス層    データ層    ORM層
 ```
 
-## データフロー
+**この順序を飛ばすことは禁止**
+
+## データフロー（必須）
+
+全てのAPI実装は以下のフローに従う：
 
 ```
 Client
@@ -28,13 +32,67 @@ Router
   ↓
 Controller（バリデーション）
   ↓
-Service（ビジネスロジック）
+Service（ビジネスロジック）← 必須
   ↓
-Repository（データアクセス）
+Repository（データアクセス）← 必須
   ↓
 Model（ORM）
   ↓
 Database
+```
+
+## 実装時の必須事項
+
+### Controller層を実装する場合
+
+- [ ] Service層が存在するか確認
+- [ ] Modelを直接呼び出していないか確認
+- [ ] ビジネスロジックを書いていないか確認
+
+### Service層を実装する場合
+
+- [ ] Repository層が存在するか確認
+- [ ] Modelを直接呼び出していないか確認（Repository経由のみ）
+
+### Repository層を実装する場合
+
+- [ ] Modelを使用しているか確認
+- [ ] Service層から呼び出されることを想定しているか確認
+
+## 禁止事項（絶対に守ること）
+
+❌ **ControllerでModelを直接呼び出さない**
+
+```typescript
+// Bad
+const user = await User.findBy('email', email)
+
+// Good
+const user = await authService.login(email, password)
+```
+
+❌ **Service層を飛ばさない**
+
+```typescript
+// Bad
+// Controller → Model（Service層を飛ばしている）
+const user = await User.create(data)
+
+// Good
+// Controller → Service → Repository → Model
+const user = await userService.create(data)
+```
+
+❌ **Repository層を飛ばさない（Serviceから）**
+
+```typescript
+// Bad
+// Service → Model（Repository層を飛ばしている）
+const user = await User.find(id)
+
+// Good
+// Service → Repository → Model
+const user = await this.userRepository.findById(id)
 ```
 
 ## レイヤー間の依存関係
